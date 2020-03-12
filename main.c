@@ -60,22 +60,34 @@ int main(int argc, char *argv[]) {
 
     for(producer_count = 0; producer_count < num_producer; producer_count++)
     {
-        printf("main(): Creating producers\n");
-        if(pthread_create(&prod_thread[producer_count], NULL, producer, &producer_count) != 0) {
+        int temp = producer_count;
+        printf("main(): producer_count=%d\n", producer_count);
+        if(pthread_create(&prod_thread[producer_count], NULL, producer, &temp) != 0) {
             fprintf(stderr, "Failed to create producer thread\n");
         }
-        // pthread_join(prod_thread[producer_count], NULL);
     }
 
     for(consumer_count = 0; consumer_count < num_consumer; consumer_count++)
     {
-        printf("main(): Creating consumers\n");
-        pthread_create(&con_thread[consumer_count], NULL, consumer, &consumer_count);
-        // pthread_join(con_thread[consumer_count], NULL);
+        int temp = consumer_count;
+        if(pthread_create(&con_thread[consumer_count], NULL, consumer, &temp) != 0) {
+            fprintf(stderr, "Failed to create consumer thread\n");
+        }
     }
 
-    // exit(0);    // Terminates all threads
-    return 0;
+    // Make sure all threads are done before exiting the program
+    int i;
+    for(i = 0; i < num_producer; i++) 
+    {
+        pthread_join(prod_thread[i], NULL);
+    }
+
+    for(i = 0; i < num_consumer; i++) 
+    {
+        pthread_join(con_thread[i], NULL);
+    }
+
+    exit(0);    // Terminates all threads
 }
 
 void *producer(int* prod_count){
@@ -85,8 +97,6 @@ void *producer(int* prod_count){
         // printf("producer(): i value=%d\n", i);
         sbuf_insert(i);
         printf("producer_%d produced item %d\n", *prod_count, i);
-        if(delay == 0)
-            usleep(500000);
     }
 }
 
@@ -96,9 +106,7 @@ void *consumer(int* con_count){
     for(i = 0; i < (num_producer*num_items)/num_consumer; i++) {
         // printf("consumer(): i value=%d\n", i);
         sbuf_remove(&buffer_item);
-        printf("consumer_%d consumed item %d\n", *con_count, buffer_item);    //TODO: fix lolol
-        if(delay == 1)
-            usleep(500000);
+        printf("consumer_%d consumed item %d\n", *con_count, buffer_item);
     }
 
 }
@@ -132,6 +140,8 @@ void sbuf_insert(item buffer_item){
 
     buffer_item_count++;
 
+    if(delay == 0) usleep(500000);
+
     pthread_cond_signal(&notempty);
     pthread_mutex_unlock(&mutex); // Unlock the buffer
 }
@@ -155,10 +165,8 @@ void sbuf_remove(item *buffer_item){
 
     // IMPLEMENTATION WITHOUT SEMAPHORES
     pthread_mutex_lock(&mutex);
-    printf("sbuf_remove(): num_consumer=%d\n", num_consumer);
     // Inserting the item
     while(buffer_item_count <= 0) {
-        printf("sbuf_remove(): in while loop; buffer_item_count=%d\n", buffer_item_count);
         pthread_cond_wait(&notempty, &mutex);
     }
 
@@ -166,6 +174,8 @@ void sbuf_remove(item *buffer_item){
     outgoing_item_index = (outgoing_item_index + 1) % BUFFER_SIZE;
 
     buffer_item_count--;
+
+    if(delay == 1) usleep(500000);
 
     pthread_cond_signal(&notfull);
     pthread_mutex_unlock(&mutex);
