@@ -1,5 +1,4 @@
-//Micky Chettanapanich mchettan 90208070
-//Lily Pham lilyp3 46103697
+//Micky Chettanapanich 90208070, Lily Pham 46103697
 
 #include <stdio.h>
 #include <stdlib.h>
